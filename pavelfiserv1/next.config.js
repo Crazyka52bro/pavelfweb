@@ -1,10 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
-  // Pokud používáte obrázky z next/image, přidejte toto:
+  // Odstraňte output: 'export', pokud nechcete statický export
   images: {
-    unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'vercel.com', // Přidejte domény, ze kterých načítáte obrázky
+      },
+    ],
   },
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;

@@ -72,9 +72,14 @@ export default function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#" className="text-blue-200 hover:text-white transition-colors">
+                <Link href="/privacy-policy" className="text-blue-200 hover:text-white transition-colors">
                   Ochrana osobních údajů
-                </a>
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms-of-service" className="text-blue-200 hover:text-white transition-colors">
+                  Obchodní podmínky
+                </Link>
               </li>
             </ul>
           </div>

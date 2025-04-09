@@ -12,19 +12,13 @@ export default function FacebookPosts() {
   const [posts, setPosts] = useState<FacebookPost[]>([])
 
   useEffect(() => {
-    // TODO: Implement Facebook API connection
-    // This will fetch posts from Facebook page
     async function fetchPosts() {
       try {
-        // Temporary mock data
-        setPosts([
-          {
-            id: "1",
-            message: "Ukázkový příspěvek z Facebooku",
-            created_time: "2023-11-15T10:00:00+0000",
-            permalink_url: "#"
-          }
-        ])
+        const response = await fetch(
+          `https://graph.facebook.com/v19.0/61574874071299/posts?fields=message,created_time,permalink_url,full_picture&access_token=EAAWPfMaYnp4BO8RqcwZCy3rXXyBU3tULzkIMEPcYZAkkvxXrkw8gzBZAHd8QZBwNZBanf4ZCgh2fhiV9vYNx4pQ46XdByHwyNltXK4EsPlphqWAZBEj18jmdYZADibYSfoOgNF6QmOLIG78VEoYICdL1zTOCAKbhqbm1fkx0es3XNXYHDyTxKUUQUJNe`
+        )
+        const data = await response.json()
+        setPosts(data.data || [])
       } catch (error) {
         console.error("Error fetching Facebook posts:", error)
       }
