@@ -20,6 +20,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <meta name="facebook-domain-verification" content="84zli94h1aqmrsxj4u3bgxzuum7kzd" />
+      </head>
       <body className={`${inter.className} min-h-screen bg-background text-foreground`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <Header />
