@@ -10,6 +10,8 @@ import { ArrowLeft, Calendar, User, Tag } from "lucide-react"
 import { Card, CardContent, CardHeader } from "../../../components/ui/card"
 import { Badge } from "../../../components/ui/badge"
 import { Button } from "../../../components/ui/button"
+import fs from "fs"
+import path from "path"
 
 interface Article {
   id: string
@@ -50,8 +52,6 @@ async function getArticle(id: string): Promise<Article | null> {
 
     // Fallback na lokální data
     try {
-      const fs = await import("fs")
-      const path = await import("path")
       const articlesPath = path.join(process.cwd(), "data", "articles.json")
 
       if (fs.existsSync(articlesPath)) {
