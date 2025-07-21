@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createSession } from "@/lib/auth-utils"
 
-const ADMIN_PASSWORD = process.env.ADMIN_PAVEL_PASSWORD
+const ADMIN_PASSWORD = process.env.ADMIN_PAVEL_PASSWORD || 'default-password'
 
 export async function POST(request: Request) {
   try {

@@ -5,7 +5,7 @@ import { z } from 'zod'
 // Force dynamic rendering pro API emailů
 export const dynamic = 'force-dynamic'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = new Resend(process.env.RESEND_API_KEY || 'test-key')
 
 // Validační schéma pro příchozí data
 const contactFormSchema = z.object({

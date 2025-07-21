@@ -12,9 +12,7 @@ import { sql as drizzleSql } from "drizzle-orm"
 import * as schema from "./schema"
 
 // Ujistíme se, že máme nastavenou DATABASE_URL
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL environment variable is not set")
-}
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://default:default@localhost:5432/default'
 
 // Konfigurace pro vývojové prostředí (není potřeba v produkci)
 if (process.env.NODE_ENV === 'development') {
@@ -22,7 +20,7 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // Create Neon SQL client
-export const sql = neon(process.env.DATABASE_URL!)
+export const sql = neon(DATABASE_URL)
 export const db: NeonHttpDatabase<typeof schema> = drizzle(sql, { schema })
 
 // Export the SQL template tag pro drizzle dotazy

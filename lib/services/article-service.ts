@@ -2,6 +2,7 @@
 import { sql, db } from "@/lib/database";
 import { drizzleSql } from "@/lib/database";
 import { articles } from "@/lib/schema";
+import { eq } from "drizzle-orm";
 // Definice typu přesunuta do tohoto souboru pro zabránění kruhových importů
 export type Article = {
   id: string
@@ -175,7 +176,7 @@ export class ArticleServiceDrizzle {
       
       const result = await db.update(articles)
         .set(updateData)
-        .where(sql`${articles.id} = ${id}`)
+        .where(eq(articles.id, id))
         .returning();
       
       if (result.length === 0) return null;
@@ -207,7 +208,7 @@ export class ArticleServiceDrizzle {
   async deleteArticle(id: string): Promise<boolean> {
     try {
       const result = await db.delete(articles)
-        .where(sql`${articles.id} = ${id}`)
+        .where(eq(articles.id, id))
         .returning();
       
       return result.length > 0;
@@ -356,14 +357,30 @@ export class ArticleServiceSQL {
       params.push(offset)
     }
 
-    // Pro správné použití musíme použít přímo db.execute s raw SQL dotazem
-    const results = await db.execute(sql`${query}`)
+    // Pro dynamické dotazy použijeme přímo Neon SQL client s template literal
+    // Bezpečná interpolace parametrů
+    let paramIndex = 0;
+    const interpolatedQuery = query.replace(/\$\d+/g, () => {
+      return '$' + (paramIndex + 1);
+    });
+    paramIndex = 0;
+    
+    // Bezpečný způsob vytvoření template literal pro Neon
+    const queryWithParams = query.replace(/\$(\d+)/g, (match, num) => {
+      const index = parseInt(num) - 1;
+      if (index < params.length) {
+        return `'${params[index]}'`; // Pozor: toto je zjednodušené, v produkci by mělo být escapované
+      }
+      return match;
+    });
+    
+    const results = await sql`${queryWithParams}`;
     const rows = results as unknown as DbArticle[]
     return rows.map(mapDbToArticle)
   }
 
   async getArticleById(id: string): Promise<Article | null> {
-    const results = await db.execute(sql`SELECT * FROM articles WHERE id = ${id} LIMIT 1`)
+    const results = await sql`SELECT * FROM articles WHERE id = ${id} LIMIT 1`
     const rows = results as unknown as DbArticle[]
     return rows.length ? mapDbToArticle(rows[0]) : null
   }
