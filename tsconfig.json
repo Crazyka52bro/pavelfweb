@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "target": "ES6",
+    "skipLibCheck": true, /* Skip type checking of all declaration files */
+    "strict": true, /* Zapnout přísnou typovou kontrolu */
+    "noImplicitAny": true, /* Nepovolit implicitní any typ */
+    "forceConsistentCasingInFileNames": true, /* Zajistit konzistentní použití velkých/malých písmen v názvech souborů */
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "baseUrl": "."
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "next-env.d.ts",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "components/backups/**/*",
+    "lib/services/article-service.ts",
+    "app/api/admin/analytics/route.ts",
+    "app/api/admin/newsletter/campaigns/route.ts"
+  ]
+}

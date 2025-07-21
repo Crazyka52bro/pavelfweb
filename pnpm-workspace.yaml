@@ -1,0 +1,9 @@
+onlyBuiltDependencies:
+  - '@prisma/client'
+  - bcrypt
+  - esbuild
+  - libpq
+  - protobufjs
+  - sharp
+  - sqlite3
+  - unrs-resolver
