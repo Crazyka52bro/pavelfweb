@@ -1,228 +1,437 @@
-import { neon } from "@neondatabase/serverless"
-import { drizzle } from "drizzle-orm/neon-http"
-import { sql } from "drizzle-orm"
-import * as schema from "../lib/schema.ts" // Umožní automatické načítání TypeScript souboru při použití tsx
-import bcrypt from "bcryptjs"
-import 'dotenv/config'
 /**
  * Complete Database Setup Script
  * Vytváří kompletní databázové schéma pro web Pavel Fišer
- * a vkládá počáteční data.
+ * a vkládá počáteční data pro články, kategorie, newsletter a nastavení.
+ *
+ * Použití:
+ * 1. Ujistěte se, že máte nastavenou proměnnou prostředí DATABASE_URL.
+ * 2. Spusťte: node scripts/complete-setup.js
  */
 
-async function main() {
-  console.log("Starting complete database setup...")
+// ES Modules import syntax
+import 'dotenv/config'
 
+// Importujeme neon a drizzle-orm
+import { neon } from '@neondatabase/serverless'
+import { drizzle } from 'drizzle-orm/neon-http'
+import { eq } from 'drizzle-orm'
+
+// Importujeme schéma tabulek pomocí ES Modules
+import {
+  articles,
+  categories,
+  newsletterSubscribers,
+  newsletterCampaigns,
+  newsletterTemplates,
+  cmsSettings,
+} from '../lib/schema.js'
+
+async function runSetup() {
   if (!process.env.DATABASE_URL) {
-    console.error("Error: DATABASE_URL environment variable is not set.")
+    console.error("DATABASE_URL environment variable is not set.")
     process.exit(1)
   }
 
-  const client = neon(process.env.DATABASE_URL)
-  const db = drizzle(client, { schema })
+  const sql = neon(process.env.DATABASE_URL)
+  const db = drizzle(sql)
+
+  console.log("Starting complete database setup...")
 
   try {
-    // 1. Drop existing tables (optional, for clean setup)
-    console.log("Dropping existing tables (if any)...")
-    await db.execute(sql`DROP TABLE IF EXISTS articles CASCADE;`)
-    await db.execute(sql`DROP TABLE IF EXISTS categories CASCADE;`)
-    await db.execute(sql`DROP TABLE IF EXISTS newsletter_subscribers CASCADE;`)
-    await db.execute(sql`DROP TABLE IF EXISTS newsletter_campaigns CASCADE;`)
-    await db.execute(sql`DROP TABLE IF EXISTS newsletter_templates CASCADE;`)
-    await db.execute(sql`DROP TABLE IF EXISTS admin_users CASCADE;`)
-    await db.execute(sql`DROP TABLE IF EXISTS cms_settings CASCADE;`)
-    await db.execute(sql`DROP TABLE IF EXISTS analytics_events CASCADE;`)
-    console.log("Existing tables dropped.")
-
-    // 2. Create tables based on schema
-    console.log("Creating new tables...")
-    await db.execute(sql`
-      CREATE TABLE articles (
+    // 1. Vytvoření tabulek (pokud neexistují)
+    console.log("Creating tables...")
+    // Používáme raw SQL pro CREATE TABLE, protože Drizzle ORM nemá přímou metodu pro "CREATE TABLE IF NOT EXISTS"
+    // a migrace se obvykle řeší jinými nástroji (např. Drizzle Kit).
+    // Toto je pro jednoduché počáteční nastavení.
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS articles (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        title TEXT NOT NULL,
+        title VARCHAR(512) NOT NULL,
         content TEXT NOT NULL,
         excerpt TEXT,
-        category TEXT NOT NULL,
-        tags TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
-        is_published BOOLEAN NOT NULL DEFAULT FALSE,
-        image_url TEXT,
-        published_at TIMESTAMPTZ,
-        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-        updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-        created_by TEXT NOT NULL
+        category VARCHAR(128) NOT NULL,
+        tags TEXT[],
+        is_published BOOLEAN DEFAULT FALSE,
+        image_url VARCHAR(2048),
+        published_at TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        created_by VARCHAR(128) NOT NULL
       );
     `)
-    await db.execute(sql`
-      CREATE TABLE categories (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        name TEXT NOT NULL UNIQUE,
-        slug TEXT NOT NULL UNIQUE,
-        description TEXT,
-        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-        updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-      );
-    `)
-    await db.execute(sql`
-      CREATE TABLE newsletter_subscribers (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        email TEXT NOT NULL UNIQUE,
-        subscribed_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-        is_active BOOLEAN NOT NULL DEFAULT TRUE
-      );
-    `)
-    await db.execute(sql`
-      CREATE TABLE newsletter_campaigns (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        subject TEXT NOT NULL,
-        body TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'draft',
-        scheduled_at TIMESTAMPTZ,
-        sent_at TIMESTAMPTZ,
-        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-        updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-        created_by TEXT NOT NULL
-      );
-    `)
-    await db.execute(sql`
-      CREATE TABLE newsletter_templates (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        name TEXT NOT NULL UNIQUE,
-        body TEXT NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-        updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-      );
-    `)
-    await db.execute(sql`
-      CREATE TABLE admin_users (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        username TEXT NOT NULL UNIQUE,
-        password_hash TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'editor',
-        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-        updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-      );
-    `)
-    await db.execute(sql`
-      CREATE TABLE cms_settings (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        key TEXT NOT NULL UNIQUE,
-        value TEXT,
-        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-        updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-      );
-    `)
-    await db.execute(sql`
-      CREATE TABLE analytics_events (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        event_name TEXT NOT NULL,
-        event_data TEXT,
-        timestamp TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-        user_id TEXT,
-        session_id TEXT
-      );
-    `)
-    console.log("Tables created successfully.")
 
-    // 3. Insert initial data
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL UNIQUE,
+        slug VARCHAR(255) NOT NULL UNIQUE,
+        description TEXT,
+        color VARCHAR(7),
+        icon VARCHAR(255),
+        parent_id UUID,
+        display_order VARCHAR(255) DEFAULT '0',
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `)
+
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        email VARCHAR(255) NOT NULL UNIQUE,
+        is_active BOOLEAN DEFAULT TRUE,
+        source VARCHAR(128) DEFAULT 'web',
+        unsubscribe_token VARCHAR(255) UNIQUE,
+        subscribed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        unsubscribed_at TIMESTAMP WITH TIME ZONE
+      );
+    `)
+
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS newsletter_campaigns (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL,
+        subject VARCHAR(512) NOT NULL,
+        content TEXT NOT NULL,
+        html_content TEXT NOT NULL,
+        text_content TEXT,
+        template_id UUID,
+        status VARCHAR(50) DEFAULT 'draft',
+        scheduled_at TIMESTAMP WITH TIME ZONE,
+        sent_at TIMESTAMP WITH TIME ZONE,
+        recipient_count VARCHAR(255) DEFAULT '0',
+        open_count VARCHAR(255) DEFAULT '0',
+        click_count VARCHAR(255) DEFAULT '0',
+        bounce_count VARCHAR(255) DEFAULT '0',
+        unsubscribe_count VARCHAR(255) DEFAULT '0',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        created_by VARCHAR(128) NOT NULL,
+        tags TEXT[],
+        segment_id UUID
+      );
+    `)
+
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS newsletter_templates (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL UNIQUE,
+        subject VARCHAR(512) NOT NULL,
+        content TEXT NOT NULL,
+        html_content TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        created_by VARCHAR(128) NOT NULL
+      );
+    `)
+
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS admin_users (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        username VARCHAR(255) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE,
+        role VARCHAR(50) DEFAULT 'editor',
+        is_active BOOLEAN DEFAULT TRUE,
+        last_login TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `)
+
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS cms_settings (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        site_name VARCHAR(255) NOT NULL,
+        site_description TEXT,
+        admin_email VARCHAR(255) NOT NULL,
+        language VARCHAR(10) DEFAULT 'en',
+        timezone VARCHAR(100) DEFAULT 'UTC',
+        default_category_id UUID,
+        auto_save_interval VARCHAR(255) DEFAULT '30000',
+        allow_image_upload BOOLEAN DEFAULT TRUE,
+        max_file_size VARCHAR(255) DEFAULT '5242880',
+        require_approval BOOLEAN DEFAULT FALSE,
+        default_visibility VARCHAR(50) DEFAULT 'public',
+        enable_scheduling BOOLEAN DEFAULT TRUE,
+        email_notifications BOOLEAN DEFAULT TRUE,
+        new_article_notification BOOLEAN DEFAULT TRUE,
+        primary_color VARCHAR(7) DEFAULT '#3b82f6',
+        dark_mode BOOLEAN DEFAULT FALSE,
+        session_timeout VARCHAR(255) DEFAULT '3600000',
+        max_login_attempts VARCHAR(255) DEFAULT '5',
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `)
+
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS analytics_events (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        type VARCHAR(50) NOT NULL,
+        path VARCHAR(2048) NOT NULL,
+        title VARCHAR(512),
+        user_id UUID,
+        session_id VARCHAR(255) NOT NULL,
+        user_agent TEXT,
+        referrer VARCHAR(2048),
+        timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        metadata TEXT
+      );
+    `)
+
+    console.log("Tables created successfully or already exist.")
+
+    // 2. Vložení počátečních dat (pokud neexistují)
     console.log("Inserting initial data...")
 
-    // Admin User
-    const adminPassword = process.env.ADMIN_PAVEL_PASSWORD || "default_admin_password" // Fallback for local testing
-    const hashedPassword = await bcrypt.hash(adminPassword, 10)
-    await db.insert(schema.adminUsers).values({
-      username: "Pavel",
-      password_hash: hashedPassword,
-      role: "admin",
-    })
-    console.log("Admin user 'Pavel' created.")
-
-    // Categories
-    await db.insert(schema.categories).values([
-      { name: "Aktuality", slug: "aktuality", description: "Nejnovější zprávy a události" },
-      { name: "Městská politika", slug: "mestska-politika", description: "Rozhodnutí a dění v zastupitelstvu" },
-      { name: "Doprava", slug: "doprava", description: "Informace o dopravě a infrastruktuře" },
+    // Kategorie
+    const initialCategories = [
       {
+        id: "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+        name: "Aktuality",
+        slug: "aktuality",
+        description: "Nejnovější zprávy a události.",
+        color: "#3b82f6",
+        displayOrder: "0",
+        isActive: true,
+      },
+      {
+        id: "b2c3d4e5-f6a7-8901-2345-67890abcdef0",
+        name: "Městská politika",
+        slug: "mestska-politika",
+        description: "Informace o dění v městské radě.",
+        color: "#ef4444",
+        displayOrder: "1",
+        isActive: true,
+      },
+      {
+        id: "c3d4e5f6-a7b8-9012-3456-7890abcdef01",
+        name: "Doprava",
+        slug: "doprava",
+        description: "Novinky a změny v dopravě.",
+        color: "#10b981",
+        displayOrder: "2",
+        isActive: true,
+      },
+      {
+        id: "d4e5f6a7-b8c9-0123-4567-890abcdef012",
         name: "Životní prostředí",
         slug: "zivotni-prostredi",
-        description: "Projekty a iniciativy pro lepší životní prostředí",
+        description: "Projekty a iniciativy pro lepší životní prostředí.",
+        color: "#f59e0b",
+        displayOrder: "3",
+        isActive: true,
       },
-      { name: "Kultura", slug: "kultura", description: "Kulturní akce a dění v Praze 4" },
-      { name: "Sport", slug: "sport", description: "Sportovní události a aktivity" },
-    ])
-    console.log("Initial categories inserted.")
+      {
+        id: "e5f6a7b8-c9d0-1234-5678-90abcdef0123",
+        name: "Kultura",
+        slug: "kultura",
+        description: "Přehled kulturních akcí a událostí.",
+        color: "#8b5cf6",
+        displayOrder: "4",
+        isActive: true,
+      },
+      {
+        id: "f6a7b8c9-d0e1-2345-6789-0abcdef01234",
+        name: "Sport",
+        slug: "sport",
+        description: "Sportovní události a úspěchy.",
+        color: "#06b6d4",
+        displayOrder: "5",
+        isActive: true,
+      },
+    ]
+    for (const cat of initialCategories) {
+      const existing = await db.select().from(categories).where(eq(categories.id, cat.id))
+      if (existing.length === 0) {
+        await db.insert(categories).values(cat)
+        console.log(`Inserted category: ${cat.name}`)
+      } else {
+        console.log(`Category already exists: ${cat.name}`)
+      }
+    }
 
-    // Articles
-    const now = new Date()
-    await db.insert(schema.articles).values([
+    // Články
+    const initialArticles = [
       {
+        id: "art1-uuid-0001-0000-000000000001",
         title: "Otevření nového komunitního centra",
-        content: "Dne 15. července bylo slavnostně otevřeno nové komunitní centrum v srdci Prahy 4...",
-        excerpt: "Nové komunitní centrum nabízí širokou škálu aktivit pro všechny věkové kategorie.",
+        content: "Dnes bylo slavnostně otevřeno nové komunitní centrum...",
+        author: "Pavel Fišer",
         category: "Aktuality",
-        tags: ["komunita", "akce", "Praha 4"],
+        excerpt: "Velká událost pro naši komunitu.",
         isPublished: true,
-        imageUrl: "/placeholder.svg",
-        published_at: now,
-        created_by: "Pavel",
+        createdBy: "Pavel Fišer",
+        publishedAt: new Date(),
       },
       {
-        title: "Změny v MHD: Nové linky a jízdní řády",
-        content: "Od 1. srpna dochází k významným změnám v městské hromadné dopravě...",
-        excerpt: "Připravte se na nové trasy a upravené jízdní řády, které zlepší dostupnost.",
+        id: "art1-uuid-0001-0000-000000000002",
+        title: "Změny v MHD jízdních řádech",
+        content: "Od 1. září platí nové jízdní řády městské hromadné dopravy...",
+        author: "Pavel Fišer",
         category: "Doprava",
-        tags: ["MHD", "doprava", "jízdní řády"],
+        excerpt: "Důležité informace pro cestující.",
         isPublished: true,
-        imageUrl: "/placeholder.svg",
-        published_at: new Date(now.getTime() - 86400000), // 1 day ago
-        created_by: "Pavel",
+        createdBy: "Pavel Fišer",
+        publishedAt: new Date(),
       },
       {
-        title: "Výsadba nových stromů v parcích",
-        content: "V rámci projektu Zelená Praha 4 bylo vysazeno přes 500 nových stromů...",
-        excerpt: "Přispíváme k lepšímu ovzduší a příjemnějšímu prostředí pro obyvatele.",
-        category: "Životní prostředí",
-        tags: ["stromy", "parky", "ekologie"],
-        isPublished: true,
-        imageUrl: "/placeholder.svg",
-        published_at: new Date(now.getTime() - 2 * 86400000), // 2 days ago
-        created_by: "Pavel",
-      },
-      {
-        title: "Zasedání zastupitelstva: Klíčová rozhodnutí",
-        content: "Na posledním zasedání zastupitelstva byly schváleny důležité projekty...",
-        excerpt: "Přehled hlavních bodů a dopadů na život v městské části.",
+        id: "art1-uuid-0001-0000-000000000003",
+        title: "Výsledky komunálních voleb",
+        content: "Komunální volby přinesly několik překvapení...",
+        author: "Pavel Fišer",
         category: "Městská politika",
-        tags: ["zastupitelstvo", "rozhodnutí", "politika"],
-        isPublished: false, // This one is not published
-        imageUrl: "/placeholder.svg",
-        published_at: null,
-        created_by: "Pavel",
+        excerpt: "Přehled nového složení zastupitelstva.",
+        isPublished: true,
+        createdBy: "Pavel Fišer",
+        publishedAt: new Date(),
       },
-    ])
-    console.log("Initial articles inserted.")
+      {
+        id: "art1-uuid-0001-0000-000000000004",
+        title: "Nový projekt na podporu třídění odpadu",
+        content: "Město spouští inovativní projekt pro efektivnější třídění odpadu...",
+        author: "Pavel Fišer",
+        category: "Životní prostředí",
+        excerpt: "Krok k zelenějšímu městu.",
+        isPublished: true,
+        createdBy: "Pavel Fišer",
+        publishedAt: new Date(),
+      },
+      {
+        id: "art1-uuid-0001-0000-000000000005",
+        title: "Festival místních kapel",
+        content: "Tento víkend se koná tradiční festival místních hudebních kapel...",
+        author: "Pavel Fišer",
+        category: "Kultura",
+        excerpt: "Nenechte si ujít hudební zážitek.",
+        isPublished: true,
+        createdBy: "Pavel Fišer",
+        publishedAt: new Date(),
+      },
+      {
+        id: "art1-uuid-0001-0000-000000000006",
+        title: "Místní fotbalový tým postoupil do vyšší ligy",
+        content: "Gratulujeme našemu fotbalovému týmu k historickému postupu...",
+        author: "Pavel Fišer",
+        category: "Sport",
+        excerpt: "Velký úspěch pro místní sport.",
+        isPublished: true,
+        createdBy: "Pavel Fišer",
+        publishedAt: new Date(),
+      },
+    ]
+    for (const art of initialArticles) {
+      const existing = await db.select().from(articles).where(eq(articles.id, art.id))
+      if (existing.length === 0) {
+        await db.insert(articles).values(art)
+        console.log(`Inserted article: ${art.title}`)
+      } else {
+        console.log(`Article already exists: ${art.title}`)
+      }
+    }
 
     // Newsletter Subscribers
-    await db.insert(schema.newsletterSubscribers).values([
-      { email: "test1@example.com", is_active: true },
-      { email: "test2@example.com", is_active: false },
-    ])
-    console.log("Initial newsletter subscribers inserted.")
+    const initialSubscribers = [
+      { id: "sub1-uuid-0001-0000-000000000001", email: "test1@example.com", isActive: true, source: "web" },
+      { id: "sub1-uuid-0001-0000-000000000002", email: "test2@example.com", isActive: true, source: "web" },
+    ]
+    for (const sub of initialSubscribers) {
+      const existing = await db.select().from(newsletterSubscribers).where(eq(newsletterSubscribers.id, sub.id))
+      if (existing.length === 0) {
+        await db.insert(newsletterSubscribers).values(sub)
+        console.log(`Inserted subscriber: ${sub.email}`)
+      } else {
+        console.log(`Subscriber already exists: ${sub.email}`)
+      }
+    }
 
-    // CMS Settings
-    await db.insert(schema.cmsSettings).values([
-      { key: "site_name", value: "Pavel Fišer CMS" },
-      { key: "contact_email", value: "info@pavelfiser.cz" },
-    ])
-    console.log("Initial CMS settings inserted.")
+    // Newsletter Campaigns
+    const initialCampaigns = [
+      {
+        id: "camp1-uuid-0001-0000-000000000001",
+        name: "Vítejte v newsletteru",
+        subject: "Vítejte!",
+        content: "Dobrý den, vítejte v našem newsletteru.",
+        htmlContent: "<p>Dobrý den, vítejte v našem newsletteru.</p>",
+        createdBy: "Pavel Fišer",
+      },
+    ]
+    for (const camp of initialCampaigns) {
+      const existing = await db.select().from(newsletterCampaigns).where(eq(newsletterCampaigns.id, camp.id))
+      if (existing.length === 0) {
+        await db.insert(newsletterCampaigns).values(camp)
+        console.log(`Inserted campaign: ${camp.name}`)
+      } else {
+        console.log(`Campaign already exists: ${camp.name}`)
+      }
+    }
 
-    console.log("Complete database setup finished successfully!")
+    // Newsletter Templates
+    const initialTemplates = [
+      {
+        id: "temp1-uuid-0001-0000-000000000001",
+        name: "Základní šablona",
+        subject: "Předmět šablony",
+        content: "<html><body><h1>{subject}</h1><p>{content}</p></body></html>",
+        htmlContent: "<html><body><h1>{subject}</h1><p>{content}</p></body></html>",
+        createdBy: "Pavel Fišer",
+      },
+    ]
+    for (const temp of initialTemplates) {
+      const existing = await db.select().from(newsletterTemplates).where(eq(newsletterTemplates.id, temp.id))
+      if (existing.length === 0) {
+        await db.insert(newsletterTemplates).values(temp)
+        console.log(`Inserted template: ${temp.name}`)
+      } else {
+        console.log(`Template already exists: ${temp.name}`)
+      }
+    }
+
+    // Settings
+    const initialSettings = [
+      {
+        id: "set1-uuid-0001-0000-000000000001",
+        siteName: "Pavel Fišer CMS",
+        siteDescription: "Název webu",
+        adminEmail: "admin@example.com",
+        language: "cs",
+        timezone: "Europe/Prague",
+        autoSaveInterval: 30000,
+        allowImageUpload: true,
+        maxFileSize: 5242880,
+        requireApproval: false,
+        defaultVisibility: "public",
+        enableScheduling: true,
+        emailNotifications: true,
+        newArticleNotification: true,
+        primaryColor: "#3b82f6",
+        darkMode: false,
+        sessionTimeout: 3600000,
+        maxLoginAttempts: 5,
+        updatedAt: new Date(),
+      },
+    ]
+    for (const set of initialSettings) {
+      const existing = await db.select().from(cmsSettings).where(eq(cmsSettings.id, set.id))
+      if (existing.length === 0) {
+        await db.insert(cmsSettings).values(set)
+        console.log(`Inserted setting: ${set.siteName}`)
+      } else {
+        console.log(`Setting already exists: ${set.siteName}`)
+      }
+    }
+
+    console.log("Initial data inserted successfully.")
+    console.log("Complete database setup finished.")
   } catch (error) {
     console.error("Error during complete database setup:", error)
     process.exit(1)
   } finally {
-    // It's good practice to close the client if it's not managed by a connection pool
-    // For Neon serverless, the connection is typically short-lived and managed automatically.
+    // Drizzle automaticky uzavírá spojení pro serverless funkce,
+    // takže zde není potřeba explicitní uzavření.
   }
 }
 
-main()
+runSetup()

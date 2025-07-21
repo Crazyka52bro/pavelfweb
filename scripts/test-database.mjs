@@ -1,5 +1,5 @@
-const { neon } = require('@neondatabase/serverless');
-require('dotenv').config({ path: '.env.local' });
+import { neon } from '@neondatabase/serverless';
+import 'dotenv/config';
 
 async function testDatabase() {
   if (!process.env.DATABASE_URL) {
