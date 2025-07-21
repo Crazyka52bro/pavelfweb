@@ -1,6 +1,6 @@
 
-import { sql } from "drizzle-orm";
-import { db } from "@/lib/database";
+import { sql, db } from "@/lib/database";
+import { drizzleSql } from "@/lib/database";
 import { articles } from "@/lib/schema";
 // Definice typu přesunuta do tohoto souboru pro zabránění kruhových importů
 export type Article = {
@@ -385,18 +385,40 @@ export async function getPublishedArticles(
 ): Promise<{ articles: Article[]; total: number; hasMore: boolean }> {
   const offset = (page - 1) * limit
 
-  // Data
-  const articles = await articleService.getArticles({
-    limit,
-    offset,
-    published: true,
-  })
+  try {
+    // Použijeme Neon SQL template literal pro získání článků
+    const articlesResult = await sql`
+      SELECT * FROM articles 
+      WHERE published = true 
+      ORDER BY published_at DESC, created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `
 
-  // Celkový počet
-  const countResults = await db.execute(sql`SELECT COUNT(*) FROM articles WHERE published = true`)
-  const countRows = countResults as unknown as { count: string }[]
-  const total = Number.parseInt(countRows[0].count, 10)
-  const hasMore = page * limit < total
+    // Konvertujeme výsledky na Article[]
+    const articles: Article[] = (articlesResult as any[]).map((row: any) => ({
+      id: row.id,
+      title: row.title,
+      content: row.content,
+      excerpt: row.excerpt,
+      category: row.category,
+      tags: Array.isArray(row.tags) ? row.tags : (row.tags ? [row.tags] : []),
+      isPublished: row.published || row.is_published,
+      published: row.published || row.is_published,
+      imageUrl: row.image_url,
+      publishedAt: row.published_at ? new Date(row.published_at) : null,
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+      createdBy: row.created_by || 'admin'
+    }))
 
-  return { articles, total, hasMore }
+    // Celkový počet
+    const countResult = await sql`SELECT COUNT(*) as count FROM articles WHERE published = true`
+    const total = Number(countResult[0]?.count || 0)
+    const hasMore = page * limit < total
+
+    return { articles, total, hasMore }
+  } catch (error) {
+    console.error("Error in getPublishedArticles:", error)
+    return { articles: [], total: 0, hasMore: false }
+  }
 }

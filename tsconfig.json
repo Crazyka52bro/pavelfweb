@@ -7,10 +7,10 @@
     ],
     "allowJs": true,
     "target": "ES6",
-    "skipLibCheck": true, /* Skip type checking of all declaration files */
-    "strict": true, /* Zapnout přísnou typovou kontrolu */
-    "noImplicitAny": true, /* Nepovolit implicitní any typ */
-    "forceConsistentCasingInFileNames": true, /* Zajistit konzistentní použití velkých/malých písmen v názvech souborů */
+    "skipLibCheck": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",

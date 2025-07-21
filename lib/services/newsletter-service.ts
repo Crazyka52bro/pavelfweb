@@ -306,38 +306,32 @@ export class NewsletterService {
   
   async updateCampaign(id: string, campaignData: Partial<NewsletterCampaign>): Promise<NewsletterCampaign | null> {
     try {
-      // Vytvoříme části SQL dotazu jen pro pole, která jsou poskytnuta
-      let updateFields = []
-      
-      if (campaignData.name !== undefined) updateFields.push(`name = ${campaignData.name}`)
-      if (campaignData.subject !== undefined) updateFields.push(`subject = ${campaignData.subject}`)
-      if (campaignData.content !== undefined) updateFields.push(`content = ${campaignData.content}`)
-      if (campaignData.html_content !== undefined) updateFields.push(`html_content = ${campaignData.html_content}`)
-      if (campaignData.text_content !== undefined) updateFields.push(`text_content = ${campaignData.text_content}`)
-      if (campaignData.template_id !== undefined) updateFields.push(`template_id = ${campaignData.template_id}`)
-      if (campaignData.status !== undefined) updateFields.push(`status = ${campaignData.status}`)
-      if (campaignData.scheduled_at !== undefined) updateFields.push(`scheduled_at = ${campaignData.scheduled_at}`)
-      if (campaignData.sent_at !== undefined) updateFields.push(`sent_at = ${campaignData.sent_at}`)
-      
-      // Pokud nejsou žádná pole k aktualizaci, vrátíme původní kampaň
-      if (updateFields.length === 0) {
-        return this.getCampaign(id)
+      // Zkontrolujeme, jestli kampaň existuje
+      const existingCampaign = await this.getCampaign(id)
+      if (!existingCampaign) {
+        return null
       }
-      
-      // Přidáme updated_at
-      updateFields.push(`updated_at = NOW()`)
-      
-      // Sestavíme a spustíme dotaz
-      const updateQuery = `
+
+      // Použijeme Neon SQL template literal pro bezpečný UPDATE
+      const queryResult = await sql`
         UPDATE newsletter_campaigns 
-        SET ${updateFields.join(', ')}
-        WHERE id = '${id}'
+        SET 
+          name = COALESCE(${campaignData.name}, name),
+          subject = COALESCE(${campaignData.subject}, subject),
+          content = COALESCE(${campaignData.content}, content),
+          html_content = COALESCE(${campaignData.html_content}, html_content),
+          text_content = COALESCE(${campaignData.text_content}, text_content),
+          template_id = COALESCE(${campaignData.template_id}, template_id),
+          status = COALESCE(${campaignData.status}, status),
+          scheduled_at = COALESCE(${campaignData.scheduled_at}, scheduled_at),
+          sent_at = COALESCE(${campaignData.sent_at}, sent_at),
+          updated_at = NOW()
+        WHERE id = ${id}
         RETURNING id, name, subject, content, html_content, text_content, template_id,
                  status, scheduled_at, sent_at, recipient_count, open_count, click_count,
                  bounce_count, unsubscribe_count, created_at, updated_at, created_by, tags, segment_id
       `
       
-      const queryResult = await sql.raw(updateQuery)
       const result = sqlToArray<any>(queryResult)
       
       if (result.length === 0) {
@@ -489,32 +483,26 @@ export class NewsletterService {
   
   async updateTemplate(id: string, templateData: Partial<NewsletterTemplate>): Promise<NewsletterTemplate | null> {
     try {
-      // Vytvoříme části SQL dotazu jen pro pole, která jsou poskytnuta
-      let updateFields = []
-      
-      if (templateData.name !== undefined) updateFields.push(`name = ${templateData.name}`)
-      if (templateData.subject !== undefined) updateFields.push(`subject = ${templateData.subject}`)
-      if (templateData.content !== undefined) updateFields.push(`content = ${templateData.content}`)
-      if (templateData.html_content !== undefined) updateFields.push(`html_content = ${templateData.html_content}`)
-      if (templateData.is_active !== undefined) updateFields.push(`is_active = ${templateData.is_active}`)
-      
-      // Pokud nejsou žádná pole k aktualizaci, vrátíme původní šablonu
-      if (updateFields.length === 0) {
-        return this.getTemplate(id)
+      // Zkontrolujeme, jestli šablona existuje
+      const existingTemplate = await this.getTemplate(id)
+      if (!existingTemplate) {
+        return null
       }
-      
-      // Přidáme updated_at
-      updateFields.push(`updated_at = NOW()`)
-      
-      // Sestavíme a spustíme dotaz
-      const updateQuery = `
+
+      // Použijeme Neon SQL template literal pro bezpečný UPDATE
+      const queryResult = await sql`
         UPDATE newsletter_templates 
-        SET ${updateFields.join(', ')}
-        WHERE id = '${id}'
+        SET 
+          name = COALESCE(${templateData.name}, name),
+          subject = COALESCE(${templateData.subject}, subject),
+          content = COALESCE(${templateData.content}, content),
+          html_content = COALESCE(${templateData.html_content}, html_content),
+          is_active = COALESCE(${templateData.is_active}, is_active),
+          updated_at = NOW()
+        WHERE id = ${id}
         RETURNING id, name, subject, content, html_content, is_active, created_at, updated_at, created_by
       `
       
-      const queryResult = await sql.raw(updateQuery)
       const result = sqlToArray<any>(queryResult)
       
       if (result.length === 0) {

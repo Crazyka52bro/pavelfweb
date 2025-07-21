@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 
 // Tato stránka je vždy generována dynamicky (SSR), aby nedocházelo k chybám s fetch a cookies
 export const dynamic = "force-dynamic"
+export const revalidate = 0
 import Image from "next/image"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -41,7 +42,8 @@ async function getArticle(id: string): Promise<Article | null> {
       throw new Error("Failed to fetch articles")
     }
 
-    const articles: Article[] = await response.json()
+    const data = await response.json()
+    const articles: Article[] = data.articles || data // Podpora pro oba formáty odpovědi
     return articles.find((article) => article.id === id || article.slug === id) || null
   } catch (error) {
     console.error("Error fetching article:", error)
@@ -200,51 +202,4 @@ export default async function ArticlePage({ params }: { params: { id: string } }
       </div>
     </div>
   )
-}
-
-export async function generateStaticParams() {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (process.env.NODE_ENV === "development" ? "http://localhost:3000" : undefined);
-    if (!baseUrl) {
-      throw new Error("NEXT_PUBLIC_BASE_URL není nastavena. Nastavte ji na https://fiserpavel.cz v prostředí Vercelu.");
-    }
-    const response = await fetch(
-      `${baseUrl}/api/admin/public/articles`,
-      {
-        cache: "no-store",
-      },
-    )
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch articles")
-    }
-
-    const articles: Article[] = await response.json()
-
-    return articles.map((article) => ({
-      id: article.id,
-    }))
-  } catch (error) {
-    console.error("Error generating static params:", error)
-
-    // Fallback na lokální data
-    try {
-      const fs = await import("fs")
-      const path = await import("path")
-      const articlesPath = path.join(process.cwd(), "data", "articles.json")
-
-      if (fs.existsSync(articlesPath)) {
-        const articlesData = fs.readFileSync(articlesPath, "utf8")
-        const articles: Article[] = JSON.parse(articlesData)
-
-        return articles.map((article) => ({
-          id: article.id,
-        }))
-      }
-    } catch (fallbackError) {
-      console.error("Error loading fallback data for static params:", fallbackError)
-    }
-
-    return []
-  }
 }
