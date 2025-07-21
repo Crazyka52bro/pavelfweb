@@ -55,23 +55,19 @@ export const GET = requireAuth(async (request: NextRequest, auth: any) => {
     const fromParam = searchParams.get("from")
     const toParam = searchParams.get("to")
 
-    let query = sql`SELECT * FROM analytics_events`
-    const whereClauses: string[] = []
-    const queryParams: any[] = []
+    // Použijeme čistě Neon SQL s template literals
+    let events: AnalyticsEvent[]
 
     if (fromParam && toParam) {
-      whereClauses.push(`timestamp >= $${queryParams.length + 1}`)
-      queryParams.push(new Date(fromParam))
-      whereClauses.push(`timestamp <= $${queryParams.length + 1}`)
-      queryParams.push(new Date(toParam))
+      const fromDate = new Date(fromParam)
+      const toDate = new Date(toParam)
+      events = await sql`
+        SELECT * FROM analytics_events 
+        WHERE timestamp >= ${fromDate} AND timestamp <= ${toDate}
+      ` as AnalyticsEvent[]
+    } else {
+      events = await sql`SELECT * FROM analytics_events` as AnalyticsEvent[]
     }
-
-    if (whereClauses.length > 0) {
-      query = sql`${query} WHERE ${sql.join(whereClauses, " AND ")}`
-    }
-
-    // @ts-ignore - ignorujeme typové problémy s SQL
-    const events = await query as unknown as AnalyticsEvent[]
 
     const dateRanges = getDateRanges()
 
