@@ -1,15 +1,10 @@
-import type { Metadata } from "next"
-
-// Tato stránka je vždy generována dynamicky (SSR), aby nedocházelo k chybám s fetch a cookies
-export const dynamic = "force-dynamic"
-export const revalidate = 0
-import Image from "next/image"
-import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ArrowLeft, Calendar, User, Tag } from "lucide-react"
 import { Card, CardContent, CardHeader } from "../../../components/ui/card"
 import { Badge } from "../../../components/ui/badge"
 import { Button } from "../../../components/ui/button"
+
+// Statické importy pro fallback (pouze na serveru)
 import fs from "fs"
 import path from "path"
 
@@ -50,7 +45,7 @@ async function getArticle(id: string): Promise<Article | null> {
   } catch (error) {
     console.error("Error fetching article:", error)
 
-    // Fallback na lokální data
+    // Fallback na lokální data (statický import)
     try {
       const articlesPath = path.join(process.cwd(), "data", "articles.json")
 
@@ -66,6 +61,7 @@ async function getArticle(id: string): Promise<Article | null> {
     return null
   }
 }
+
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const article = await getArticle(params.id)
