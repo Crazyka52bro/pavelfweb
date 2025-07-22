@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
           case "duplicate":
             const duplicatedArticle: Article = {
               ...article,
-              id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+              id: Date.now().toString() + Math.random().toString(36).substring(2, 11),
               title: `${article.title} (kopie)`,
               published: false,
               publishedAt: undefined,

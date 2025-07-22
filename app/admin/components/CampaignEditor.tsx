@@ -75,7 +75,7 @@ export default function CampaignEditor({
     setIsSaving(true)
     
     const templateData: EmailTemplate = {
-      id: template?.id || Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      id: template?.id || Date.now().toString() + Math.random().toString(36).substring(2, 11),
       name: name.trim(),
       subject: subject.trim(),
       htmlContent: htmlContent.trim(),
@@ -103,7 +103,7 @@ export default function CampaignEditor({
     setIsSending(true)
     
     const templateData: EmailTemplate = {
-      id: template?.id || Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      id: template?.id || Date.now().toString() + Math.random().toString(36).substring(2, 11),
       name: name.trim(),
       subject: subject.trim(),
       htmlContent: htmlContent.trim(),

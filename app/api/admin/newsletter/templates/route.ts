@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       // Create new template
       const newTemplate: EmailTemplate = {
         ...templateData,
-        id: templateData.id || Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        id: templateData.id || Date.now().toString() + Math.random().toString(36).substring(2, 11),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }

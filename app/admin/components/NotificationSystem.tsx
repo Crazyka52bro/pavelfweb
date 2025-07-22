@@ -124,7 +124,7 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([])
 
   const addNotification = (notification: Omit<Notification, 'id'>) => {
-    const id = Date.now().toString() + Math.random().toString(36).substr(2, 9)
+    const id = Date.now().toString() + Math.random().toString(36).substring(2, 11)
     setNotifications(prev => [...prev, { ...notification, id }])
   }
 

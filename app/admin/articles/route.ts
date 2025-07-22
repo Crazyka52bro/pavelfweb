@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
 
     // Create new article
     const newArticle: Article = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 11),
       title: articleData.title,
       content: articleData.content,
       excerpt: articleData.excerpt || '',

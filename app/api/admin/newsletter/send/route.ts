@@ -221,7 +221,7 @@ async function sendNewsletterEmail(
     if (success) {
       return { 
         success: true, 
-        messageId: `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` 
+        messageId: `mock_${Date.now()}_${Math.random().toString(36).substring(2, 11)}` 
       }
     } else {
       return { 
@@ -273,7 +273,7 @@ export async function POST(request: NextRequest) {
 
     // Create campaign record
     const campaign: Campaign = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 11),
       templateId: template.id,
       name: template.name,
       subject: template.subject,
