@@ -25,7 +25,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     },
     "baseUrl": "."
   },
@@ -38,8 +40,6 @@
   "exclude": [
     "node_modules",
     "components/backups/**/*",
-    "lib/services/article-service.ts",
-    "app/api/admin/analytics/route.ts",
-    "app/api/admin/newsletter/campaigns/route.ts"
+    "app/api/admin/fixed/**/*"
   ]
 }
